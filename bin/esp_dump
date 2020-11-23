@@ -1,0 +1,110 @@
+#!/usr/bin/env ruby
+require 'optparse'
+require 'json'
+require 'elder_scrolls_plugin'
+require 'json-diff'
+
+debug = false
+read_only_tes4 = false
+read_fields = false
+output_unknown = false
+output_masters = false
+output_tree = false
+output_json = false
+output_form_ids = false
+diff = false
+OptionParser.new do |opts|
+  opts.banner = "Usage: #{$0} [options] files"
+  opts.on('-d', '--debug', 'Activate log debugs') do
+    debug = true
+  end
+  opts.on('-f', '--include-fields', 'Read the fields') do
+    read_fields = true
+  end
+  opts.on('-j', '--output-json', 'Output the tree of records as JSON') do
+    output_json = true
+  end
+  opts.on('-i', '--diff', 'Output a JSON of the differences between 2 esps. Requires 2 esps files to be given. Will display file2 - file1.') do
+    diff = true
+  end
+  opts.on('-m', '--output-masters', 'Output the masters list') do
+    output_masters = true
+  end
+  opts.on('-o', '--only-tes4', 'Read only the TES4 header') do
+    read_only_tes4 = true
+  end
+  opts.on('-r', '--output-form-ids', 'Output the absolute form IDs') do
+    output_form_ids = true
+  end
+  opts.on('-t', '--output-tree', 'Output the tree of records') do
+    output_tree = true
+  end
+  opts.on('-u', '--output-unknown', 'Output unknown chunks') do
+    output_unknown = true
+  end
+end.parse!
+files = ARGV.clone
+raise 'Can\'t use --only-tes4 and --output-masters without --include-fields' if output_masters && read_only_tes4 && !read_fields
+raise 'Need 2 files to be given when using --diff option' if diff && files.size != 2
+raise '--diff can\'t be used with other --output-* options.' if diff && (output_json || output_masters || output_form_ids || output_tree || output_unknown)
+@display_headers = files.size > 1 || [output_unknown, output_masters, output_tree, output_json, output_form_ids].select { |flag| flag }.size > 1
+
+# Start a processing section with a message.
+# If no headers need to be output, only execute the section's code.
+#
+# Parameters::
+# * *title* (String): Section title
+# * Proc: Section code called
+def section(title)
+  puts "===== #{title} =====" if @display_headers
+  yield
+  puts if @display_headers
+end
+
+if diff
+  json1, json2 = files.map do |file|
+    ElderScrollsPlugin.new(
+      file,
+      debug: debug,
+      decode_only_tes4: read_only_tes4,
+      decode_fields: read_fields
+    ).to_json
+  end
+  # Compute the diff of 2 jsons
+  puts JSON.pretty_generate(
+    JsonDiff.diff(json1, json2, include_was: true, moves: false).map do |json_diff|
+      readable_path = ''
+      json_cursor = json1
+      # puts json1
+      json_diff['path'].split('/')[1..-1].each do |token|
+        # puts "----- #{token}"
+        if token.scan(/\D/).empty?
+          # JSON should be an Array
+          json_cursor = json_cursor[token.to_i]
+        else
+          json_cursor = json_cursor[token.to_sym]
+        end
+        readable_path << "/#{json_cursor[:name]}" if json_cursor.is_a?(Hash) && json_cursor.key?(:name)
+      end
+      json_diff.merge(
+        'esp_path' => readable_path
+      )
+    end
+  )
+else
+  files.each do |file|
+    esp = ElderScrollsPlugin.new(
+      file,
+      debug: debug,
+      decode_only_tes4: read_only_tes4,
+      ignore_unknown_chunks: output_unknown,
+      decode_fields: read_fields)
+    section("#{file} - Chunks tree") { esp.dump } if output_tree
+    section("#{file} - JSON") { puts JSON.pretty_generate(esp.to_json) } if output_json
+    section("#{file} - Masters") { esp.dump_masters } if output_masters
+    section("#{file} - Absolute Form IDs") { esp.dump_absolute_form_ids } if output_form_ids
+    section("#{file} - Unknown chunks") do
+      puts esp.unknown_chunks.map { |c| "#{c.name} [#{c.instance_variable_get(:@esp_info)[:type]}]" }.sort.uniq.join("\n")
+    end if output_unknown
+  end
+end
