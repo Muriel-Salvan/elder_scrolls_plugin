@@ -19,13 +19,13 @@ Gem::Specification.new do |s|
 
   # Dependencies
   # Riffola to read RIFF files
-  s.add_dependency 'riffola'
+  s.add_dependency 'riffola', '~> 0.0'
   # BinData to read binary data easily from strings
-  s.add_dependency 'bindata'
+  s.add_dependency 'bindata', '~> 2.4'
   # For the executable to dump JSON diffs
-  s.add_dependency 'json-diff'
+  s.add_dependency 'json-diff', '~> 0.4'
 
   # Development dependencies (tests, debugging)
   # Test framework
-  s.add_development_dependency 'rspec'
+  s.add_development_dependency 'rspec', '~> 3.10'
 end
