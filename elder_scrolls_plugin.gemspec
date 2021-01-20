@@ -29,5 +29,5 @@ Gem::Specification.new do |s|
   # Test framework
   s.add_development_dependency 'rspec', '~> 3.10'
   # Automatic semantic releasing
-  spec.add_development_dependency 'sem_ver_components', '~> 0.0'
+  s.add_development_dependency 'sem_ver_components', '~> 0.0'
 end
