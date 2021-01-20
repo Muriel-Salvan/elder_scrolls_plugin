@@ -700,7 +700,6 @@ class ElderScrollsPlugin
     end
     # We just finished parsing TES4, update the masters index
     @master_ids.merge!(sprintf('%.2x', @master_ids.size) => File.basename(@file_name))
-    p @master_ids
     @chunks_tree[nil] = chunks
     unless decode_only_tes4
       chunks.each do |chunk|
