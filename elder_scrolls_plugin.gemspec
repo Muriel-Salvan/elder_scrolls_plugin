@@ -25,7 +25,9 @@ Gem::Specification.new do |s|
   # For the executable to dump JSON diffs
   s.add_dependency 'json-diff', '~> 0.4'
 
-  # Development dependencies (tests, debugging)
+  # Development dependencies (tests, build)
   # Test framework
   s.add_development_dependency 'rspec', '~> 3.10'
+  # Automatic semantic releasing
+  spec.add_development_dependency 'sem_ver_components', '~> 0.0'
 end
